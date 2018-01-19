@@ -1,0 +1,252 @@
+#ifdef __APPLE__
+#include <GLUT/glut.h>
+#else
+#include <GL/glut.h>
+#endif
+#include <stdio.h>
+#include"model.h"
+#include<string>
+using namespace std;
+
+int girax = 0;
+int giray = 0;
+
+float legox = -0.75;
+float legoy = -0.4;
+float legoz = 0.75;
+float lastx = 0.0;
+float lastz = 0.0;
+
+//booleanos
+int rotar = 0;
+int puc_rotar_x = 0;
+int puc_rotar_y = 0;
+int lego_o_escena = 0;
+
+void pintar_model(){
+
+	
+	Model mod;
+	vector<Model> models;
+	mod.load("legoman.obj");
+
+	double xmax,xmin,ymax,ymin,zmax,zmin = 1;
+	const vector<Vertex> vert = mod.vertices();
+
+	//agafar els punts maxims i minims
+	for(int i = 0; i < mod.faces().size(); i++){
+
+		const Face &f = mod.faces()[i];
+		
+		if(mod.vertices()[f.v[0]] > xmax) xmax = mod.vertices()[f.v[0]];
+		if(mod.vertices()[f.v[0]] < xmin) xmin = mod.vertices()[f.v[0]];
+
+		if(mod.vertices()[f.v[1]] > ymax) ymax = mod.vertices()[f.v[1]];
+		if(mod.vertices()[f.v[1]] < ymin) ymin = mod.vertices()[f.v[1]];
+
+		if(mod.vertices()[f.v[2]] > zmax) zmax = mod.vertices()[f.v[2]];
+		if(mod.vertices()[f.v[2]] < zmin) zmin = mod.vertices()[f.v[2]];
+
+
+	}
+
+	glPushMatrix();
+
+		glTranslatef(legox,legoy,legoz);
+		glScaled(0.5/(ymax-ymin),0.5/(ymax-ymin),0.5/(ymax-ymin));
+		glTranslatef(-((xmax+xmin)/2.0),-ymin,-(((zmax+zmin)/2.0)));
+		
+		for(int i = 0; i<mod.faces().size();i++){
+
+			const Face &f = mod.faces()[i];
+			glColor4fv(Materials[f.mat].diffuse);
+
+			glBegin(GL_TRIANGLES);
+				glVertex3dv(&mod.vertices()[f.v[0]]);
+				glVertex3dv(&mod.vertices()[f.v[1]]);
+				glVertex3dv(&mod.vertices()[f.v[2]]);
+			glEnd();
+		}
+	
+	glPopMatrix();
+
+}
+
+
+void pintar_terra(){
+
+	glRotated(girax,1,0,0);
+	glRotated(giray,0,1,0);
+
+	glColor3f(0.2f, 0.9f, 0.9f);
+	glBegin(GL_QUADS);
+		glVertex3f(0.75,0,0.75);
+		glVertex3f(0.75,0,-0.75);
+		glVertex3f(-0.75,0,-0.75);
+		glVertex3f(-0.75,0,0.75);
+	glEnd();
+
+}
+
+
+void pintar_ninot(){
+	
+
+	glPushMatrix();
+		glColor3f(1,1,1);
+		glTranslatef(0,0.0,0);
+		glutWireSphere(0.4,60,60);
+	glPopMatrix();
+	glPushMatrix();
+		glColor3f(1,1,1);
+		glTranslatef(0,0.6,0);
+		glutSolidSphere(0.2,60,60);
+	glPopMatrix();
+
+
+}
+
+void onMotion(int x, int y){
+
+
+	if(lego_o_escena == 0){
+
+
+		if(puc_rotar_x == 1){
+
+			 if(x < girax) girax = girax - 5;
+			 else girax = girax + 5;
+			
+		}
+		
+		if(puc_rotar_y == 1){
+	
+			 if(y < giray) giray = giray - 5;
+			 else giray = giray + 5;
+	
+		}
+
+	}
+
+
+	else{
+
+		if(x < lastx) legox = legox - 0.01;
+
+		else if(x >= lastx) legox = legox + 0.01;
+
+		if(y < lastz) legoz = legoz - 0.01;
+
+		else if( y >= lastz) legoz = legoz + 0.01;
+		
+		lastx = x;
+		lastz = y;
+	}	
+
+
+	glutPostRedisplay();
+
+}
+
+
+
+void keyboard(unsigned char c, int x, int y){
+
+	
+	if(c == 'r'){
+
+		if (rotar == 0) rotar = 1;
+		else if (rotar == 1) rotar = 0;
+	
+		puc_rotar_x = 0;
+		puc_rotar_y = 0;
+		
+	}
+
+	else if(c == 'x') puc_rotar_x = 1;
+	
+	else if(c == 'y') puc_rotar_y = 1;
+	
+	else if(c == 'c'){
+
+		if(lego_o_escena == 0) lego_o_escena = 1;
+		else if(lego_o_escena == 1) lego_o_escena = 0;
+
+		printf("%d \n",lego_o_escena);
+		
+	}
+
+
+}
+
+
+void reshape(int x, int y) {
+
+	//calculamos el aspect ratio
+	int nouorigen = (x-y)/2;
+
+	//ajustamos el viewport
+	glViewport(nouorigen, 0, y, y);
+
+	
+}
+
+void display(void) {
+
+
+	glClearColor(0.4,0.4,1.0,1.0); 
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); 
+
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
+	glPushMatrix();
+
+	pintar_terra();
+	pintar_ninot();
+	pintar_model();
+	
+	glPopMatrix();
+
+	//intercambiamos el front buffer y el back buffer
+	glutSwapBuffers();
+}
+
+
+void initGL(int argc, char **argv){
+
+
+	//iniciamos glut
+	glutInit(&argc, argv);
+
+	//especificamos las medidas de la ventana
+	glutInitWindowSize(600,600);
+
+	//creamos una ventana y le asignamos un titulo
+	glutCreateWindow("IDI");
+	
+	glEnable(GL_DEPTH_TEST);
+	glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGB);
+
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	glOrtho(-1,1,-1,1,-1,1);
+	glMatrixMode(GL_MODELVIEW);
+
+	//definicion de callbacks
+	glutDisplayFunc(display);
+	glutReshapeFunc(reshape);
+	glutMotionFunc(onMotion);
+	glutKeyboardFunc(keyboard);
+
+	//entramos en el bucle de procesamiento de eventos
+	glutMainLoop();
+
+}
+
+int main(int argc, char **argv) {
+	
+	//inicializamos GL
+	initGL(argc, argv);
+
+	return 0;
+}
